@@ -1,0 +1,280 @@
+let cart = [];
+
+const products = document.querySelectorAll(".product");
+const cartOverlay = document.getElementById("cart-overlay");
+const checkoutOverlay = document.getElementById("checkout-overlay");
+
+function formatPrice(price) {
+  return new Intl.NumberFormat("fr-FR").format(price) + " FCFA";
+}
+
+function addToCart(name, price, icon) {
+  const existing = cart.find(item => item.name === name);
+
+  if (existing) {
+    existing.quantity++;
+  } else {
+    cart.push({
+      name,
+      price,
+      icon,
+      quantity: 1
+    });
+  }
+
+  updateCart();
+
+  alert("✅ Produit ajouté au panier !");
+}
+
+function removeFromCart(name) {
+  cart = cart.filter(item => item.name !== name);
+  updateCart();
+}
+
+function updateCart() {
+  const cartItems = document.getElementById("cart-items");
+  const cartCount = document.getElementById("cart-count");
+  const cartTotal = document.getElementById("cart-total");
+
+  cartItems.innerHTML = "";
+
+  let total = 0;
+  let quantity = 0;
+
+  cart.forEach(item => {
+    total += item.price * item.quantity;
+    quantity += item.quantity;
+
+    const element = document.createElement("div");
+
+    element.className = "cart-item";
+
+    element.innerHTML = `
+      <div class="cart-item-icon">
+        ${item.icon}
+      </div>
+
+      <div class="cart-item-info">
+        <strong>${item.name}</strong>
+        <span>
+          ${item.quantity} × ${formatPrice(item.price)}
+        </span>
+      </div>
+
+      <button
+        class="remove-item"
+        onclick="removeFromCart('${item.name}')"
+      >
+        Supprimer
+      </button>
+    `;
+
+    cartItems.appendChild(element);
+  });
+
+  if (cart.length === 0) {
+    cartItems.innerHTML = `
+      <p style="text-align:center;padding:30px;color:#777;">
+        Votre panier est vide.
+      </p>
+    `;
+  }
+
+  cartCount.textContent = quantity;
+  cartTotal.textContent = formatPrice(total);
+
+  localStorage.setItem("boutique_cart", JSON.stringify(cart));
+}
+
+function openCart() {
+  cartOverlay.classList.add("active");
+}
+
+function closeCart() {
+  cartOverlay.classList.remove("active");
+}
+
+function openCheckout() {
+  if (cart.length === 0) {
+    alert("🛒 Votre panier est vide.");
+    return;
+  }
+
+  closeCart();
+  checkoutOverlay.classList.add("active");
+}
+
+function closeCheckout() {
+  checkoutOverlay.classList.remove("active");
+}
+
+/* RECHERCHE */
+
+function searchProducts() {
+  const search =
+    document
+      .getElementById("search")
+      .value
+      .toLowerCase()
+      .trim();
+
+  products.forEach(product => {
+    const name =
+      product.dataset.name.toLowerCase();
+
+    if (name.includes(search)) {
+      product.style.display = "";
+    } else {
+      product.style.display = "none";
+    }
+  });
+}
+
+/* FILTRE CATÉGORIES */
+
+function filterProducts(category) {
+
+  products.forEach(product => {
+
+    if (
+      category === "all" ||
+      product.dataset.category === category
+    ) {
+      product.style.display = "";
+    } else {
+      product.style.display = "none";
+    }
+
+  });
+
+}
+
+/* FORMULAIRE DE COMMANDE */
+
+document
+  .getElementById("checkout-form")
+  .addEventListener("submit", function(event) {
+
+    event.preventDefault();
+
+    if (cart.length === 0) {
+      alert("Votre panier est vide.");
+      return;
+    }
+
+    const name =
+      document.getElementById("customer-name").value;
+
+    const phone =
+      document.getElementById("customer-phone").value;
+
+    const address =
+      document.getElementById("customer-address").value;
+
+    const payment =
+      document.getElementById("payment-method").value;
+
+    let total = 0;
+
+    cart.forEach(item => {
+      total += item.price * item.quantity;
+    });
+
+    /*
+      IMPORTANT :
+      Cette partie enregistre seulement la commande
+      localement pour la V1.
+
+      Le vrai paiement Orange Money / carte / PayPal
+      devra être connecté à une API de paiement
+      marchande sécurisée dans le backend.
+    */
+
+    const order = {
+      id: "CMD-" + Date.now(),
+      customer: {
+        name,
+        phone,
+        address
+      },
+      payment,
+      products: cart,
+      total,
+      date: new Date().toISOString(),
+      status: "En attente"
+    };
+
+    localStorage.setItem(
+      "last_order",
+      JSON.stringify(order)
+    );
+
+    alert(
+      "✅ Commande enregistrée !\n\n" +
+      "Numéro : " +
+      order.id +
+      "\n" +
+      "Total : " +
+      formatPrice(total) +
+      "\n\n" +
+      "Le paiement sera connecté dans la prochaine étape."
+    );
+
+    cart = [];
+
+    updateCart();
+
+    document
+      .getElementById("checkout-form")
+      .reset();
+
+    closeCheckout();
+
+  });
+
+/* CHARGEMENT DU PANIER */
+
+function loadCart() {
+
+  const saved =
+    localStorage.getItem("boutique_cart");
+
+  if (!saved) {
+    return;
+  }
+
+  try {
+
+    cart = JSON.parse(saved);
+
+  } catch (error) {
+
+    cart = [];
+
+  }
+
+  updateCart();
+}
+
+/* FERMETURE EN CLIQUANT SUR L'ARRIÈRE-PLAN */
+
+cartOverlay.addEventListener("click", function(event) {
+
+  if (event.target === cartOverlay) {
+    closeCart();
+  }
+
+});
+
+checkoutOverlay.addEventListener("click", function(event) {
+
+  if (event.target === checkoutOverlay) {
+    closeCheckout();
+  }
+
+});
+
+/* INITIALISATION */
+
+loadCart();
