@@ -1,4 +1,6 @@
-# Gradle files
+Boutique-de-vente-en-ligne-/
+├── index.html
+└── style.css# Gradle files
 .gradle/
 build/
 
